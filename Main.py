@@ -9,6 +9,7 @@ pygame.init()
 pygame.mixer.init()
 
 screen = pygame.display.set_mode((950, 450))
+screen_center = (screen.get_width() // 2, screen.get_height() // 2)
 pygame.display.set_caption('Air Hockey')
 clock = pygame.time.Clock()
 
@@ -24,9 +25,9 @@ hit_sounds = [
 class Divider(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((6, screen.get_height()))
+        self.image = pygame.Surface((5, screen.get_height()))
         self.image.fill((200, 5, 5))
-        self.rect = self.image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+        self.rect = self.image.get_rect(center=screen_center)
 
 
 class Goal(pygame.sprite.Sprite):
@@ -51,13 +52,13 @@ class Puck(pygame.sprite.Sprite):
         self.radius = radius
         self.image = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
         pygame.draw.circle(self.image, color, (radius, radius), radius)
-        self.rect = self.image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
-        self.pos = pygame.math.Vector2(self.rect.center)
+        self.rect = self.image.get_rect(center=screen_center)
+        self.pos = pygame.math.Vector2(screen_center)
         self.vel = pygame.math.Vector2(0, 0)
 
     def update(self):
         self.pos += self.vel
-        self.rect.center = self.pos
+        self.rect.center = (round(self.pos.x), round(self.pos.y))
 
 
 class GamePuck(Puck):
@@ -210,6 +211,7 @@ class PlayerPuck(Puck):
 
 # Sprite setup
 player = PlayerPuck((50, 50, 50))
+player.rect.center = (200, screen.get_height() // 2)
 divider = Divider()
 leftGoal = Goal()
 rightGoal = Goal(xPos=screen.get_width())
