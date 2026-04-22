@@ -45,6 +45,24 @@ class Goal(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(xPos, screen.get_height() // 2))
 
 
+class VerticalEdge:
+    def __init__(self, goal: Goal):
+        self.goal = goal
+        x = goal.rect.centerx
+        self.topRect = pygame.Rect(
+            x,
+            0,
+            1,
+            goal.rect.top
+        )
+        self.bottomRect = pygame.Rect(
+            x,
+            goal.rect.bottom,
+            1,
+            screen.get_height() - goal.rect.bottom
+        )
+
+
 class Puck(pygame.sprite.Sprite):
     def __init__(self, color, radius=25):
         super().__init__()
@@ -62,7 +80,8 @@ class Puck(pygame.sprite.Sprite):
 
 
 class GamePuck(Puck):
-    def __init__(self, color, player, particle_manager, friction=0.995, wall_elasticity=0.9, player_elasticity=0.8):
+    def __init__(self, color, player, particle_manager, edge_group, friction=0.995, wall_elasticity=0.9,
+                 player_elasticity=0.8):
         super().__init__(color, 20)
         self.player = player
         self.friction = friction
@@ -75,6 +94,8 @@ class GamePuck(Puck):
         self.ghost_speed_threshold = 10
 
         self.last_sound_effect_trigger = 0
+
+        self.edges = edge_group
 
     def update(self):
         self.apply_friction()
@@ -113,17 +134,50 @@ class GamePuck(Puck):
             self.last_sound_effect_trigger += 15
             random.choice(hit_sounds).play()
 
+    def resolve_collision(self, normal, overlap=0, other_vel=pygame.math.Vector2(0, 0), elasticity=1.0):
+        # Ensure normal is normalized
+        if normal.length() == 0:
+            return
+        normal = normal.normalize()
+
+        # Separate objects
+        if overlap > 0:
+            self.pos += normal * overlap
+            self.rect.center = self.pos
+
+        # Relative velocity
+        rel_vel = self.vel - other_vel
+        rel_vel_dot_normal = rel_vel.dot(normal)
+
+        # Only bounce if moving into the surface
+        if rel_vel_dot_normal < 0:
+            self.produce_collision_sound()
+            self.vel -= (1 + elasticity) * rel_vel_dot_normal * normal
+
     def handle_wall_collision(self):
-        """Bounce off screen edges using center position and radius."""
-        # Horizontal
-        if self.pos.x - self.radius < 0:  # Hit Left
-            self.produce_collision_sound()
-            self.pos.x = self.radius
-            self.vel.x *= -self.wall_elasticity
-        elif self.pos.x + self.radius > screen.get_width():  # Hit Right
-            self.produce_collision_sound()
-            self.pos.x = screen.get_width() - self.radius
-            self.vel.x *= -self.wall_elasticity
+        """Bounce off-screen edges using center position and radius."""
+        for edge in self.edges:
+            if self.rect.centery < screen_center[1]:
+                edgeRect = edge.topRect
+            else:
+                edgeRect = edge.bottomRect
+
+            closest_x = max(edgeRect.left, min(self.pos.x, edgeRect.right))
+            closest_y = max(edgeRect.top, min(self.pos.y, edgeRect.bottom))
+
+            distance_x = self.pos.x - closest_x
+            distance_y = self.pos.y - closest_y
+
+            if (distance_x ** 2 + distance_y ** 2) < (self.radius ** 2):
+                collision_normal = pygame.math.Vector2(distance_x, distance_y)
+
+                overlap = self.radius - collision_normal.length()
+
+                self.resolve_collision(
+                    normal=collision_normal,
+                    overlap=overlap,
+                    elasticity=self.wall_elasticity
+                )
 
         # Vertical
         if self.pos.y - self.radius < 0:  # Hit Top
@@ -139,36 +193,27 @@ class GamePuck(Puck):
         self.rect.center = self.pos
 
     def handle_player_collision(self):
-        """Bounce off the player using pure circle collision."""
         player_center = pygame.math.Vector2(self.player.rect.center)
         puck_center = pygame.math.Vector2(self.rect.center)
 
         collision_normal = puck_center - player_center
         distance = collision_normal.length()
 
-        # Collision Check
         if distance >= self.radius + self.player.radius:
             return
 
-        # Avoid division by zero
         if distance == 0:
             collision_normal = pygame.math.Vector2(1, 0)
             distance = 1
 
-        collision_normal.normalize_ip()
-
-        # Separate puck from player
         overlap = self.radius + self.player.radius - distance
-        if overlap > 0:
-            self.pos += collision_normal * overlap
-            self.rect.center = self.pos
 
-        rel_vel = self.vel - self.player.vel
-        rel_vel_dot_normal = rel_vel.dot(collision_normal)
-
-        if rel_vel_dot_normal < 0:
-            self.produce_collision_sound()
-            self.vel -= (1 + self.player_elasticity) * rel_vel_dot_normal * collision_normal
+        self.resolve_collision(
+            normal=collision_normal,
+            overlap=overlap,
+            other_vel=self.player.vel,
+            elasticity=self.player_elasticity
+        )
 
 
 class PlayerPuck(Puck):
@@ -215,11 +260,14 @@ player.rect.center = (200, screen.get_height() // 2)
 divider = Divider()
 leftGoal = Goal()
 rightGoal = Goal(xPos=screen.get_width())
+leftEdge = VerticalEdge(leftGoal)
+rightEdge = VerticalEdge(rightGoal)
+edges = [leftEdge, rightEdge]
 rink_objects = pygame.sprite.Group()
 rink_objects.add(divider, leftGoal, rightGoal)
 
 particle_manager = particles.ParticleManager()
-puck = GamePuck((0, 0, 0), player, particle_manager)
+puck = GamePuck((0, 0, 0), player, particle_manager, edges)
 game_objects = pygame.sprite.Group()
 game_objects.add(player, puck)
 player.divider = divider
