@@ -199,7 +199,7 @@ divider = Divider()
 particle_manager = particles.ParticleManager()
 puck = GamePuck((0, 0, 0), player, particle_manager)
 game_objects = pygame.sprite.Group()
-game_objects.add(Divider(), player, puck)
+game_objects.add(player, puck)
 player.divider = divider
 
 while True:
@@ -209,6 +209,8 @@ while True:
             exit()
 
     screen.fill(ice_color)
+    screen.blit(divider.image, divider.rect)  # Must be rendered separately so it stays below pucks
+    # TODO: 'rink' sprite group for divider and goals
 
     particle_manager.update()
     particle_manager.draw(screen)
