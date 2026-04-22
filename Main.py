@@ -234,11 +234,19 @@ class GamePuck(Puck):
 
 
 class PlayerPuck(Puck):
-    def __init__(self, color, speed=22):
+    def __init__(self, color, starting_pos, speed=22):
         super().__init__(color)
         self.divider = None
         self.speed = speed
         self.vel = pygame.math.Vector2(0, 0)
+        self.starting_pos = starting_pos
+        self.pos = self.starting_pos
+        self.rect.center = self.starting_pos
+
+    def reset(self):
+        self.pos = self.starting_pos
+        self.rect.center = self.starting_pos
+        pygame.mouse.set_pos(self.starting_pos)
 
     def update(self):
         old_pos = pygame.math.Vector2(self.rect.center)
@@ -272,8 +280,10 @@ class PlayerPuck(Puck):
 
 
 # Sprite setup
-player = PlayerPuck((50, 50, 50))
-player.rect.center = (200, screen.get_height() // 2)
+player = PlayerPuck((50, 50, 50), (30, screen.get_height() // 2 - 25))
+pygame.mouse.set_pos((30, screen.get_height() // 2 - 25))
+pygame.mouse.set_visible(False)
+
 divider = Divider()
 leftGoal = Goal()
 rightGoal = Goal(xPos=screen.get_width())
@@ -300,8 +310,8 @@ def trigger_score(player_num):
     # spawn particles here
     # trigger UI update for score display
     print(scores)
-    # update puck position
     puck.reset()
+    player.reset()
 
 
 while True:
