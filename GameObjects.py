@@ -1,7 +1,10 @@
 import random
+
 import pygame
 
 import particles
+from RinkObjects import Goal
+
 pygame.mixer.init()
 hit_sounds = [
     pygame.mixer.Sound('audio/hitSounds/puckHit_1.wav'),
@@ -28,10 +31,11 @@ class Puck(pygame.sprite.Sprite):
 
 
 class GamePuck(Puck):
-    def __init__(self, color, player, particle_manager, edge_group, screen, screen_center, friction=0.995, wall_elasticity=0.9,
+    def __init__(self, color, particle_manager, edge_group, screen, screen_center, friction=0.995,
+                 wall_elasticity=0.9,
                  player_elasticity=0.8):
         super().__init__(color, screen_center, 20)
-        self.player = player
+        self.paddles = None
         self.friction = friction
         self.wall_elasticity = wall_elasticity
         self.player_elasticity = player_elasticity
@@ -167,32 +171,34 @@ class GamePuck(Puck):
         self.rect.center = self.pos
 
     def handle_player_collision(self):
-        player_center = pygame.math.Vector2(self.player.rect.center)
-        puck_center = pygame.math.Vector2(self.rect.center)
+        for paddle in self.paddles:
+            paddle_center = pygame.math.Vector2(paddle.rect.center)
+            puck_center = pygame.math.Vector2(self.rect.center)
 
-        collision_normal = puck_center - player_center
-        distance = collision_normal.length()
+            collision_normal = puck_center - paddle_center
+            distance = collision_normal.length()
 
-        if distance >= self.radius + self.player.radius:
-            return
+            if distance >= self.radius + paddle.radius:
+                continue
 
-        if distance == 0:
-            collision_normal = pygame.math.Vector2(1, 0)
-            distance = 1
+            if distance == 0:
+                collision_normal = pygame.math.Vector2(1, 0)
+                distance = 1
 
-        overlap = self.radius + self.player.radius - distance
+            overlap = self.radius + paddle.radius - distance
 
-        self.resolve_collision(
-            normal=collision_normal,
-            overlap=overlap,
-            other_vel=self.player.vel,
-            elasticity=self.player_elasticity
-        )
+            self.resolve_collision(
+                normal=collision_normal,
+                overlap=overlap,
+                other_vel=paddle.vel,
+                elasticity=self.player_elasticity
+            )
 
 
 class Paddle(Puck):
     def __init__(self, color, starting_pos, screen, screen_center, speed=25):
         super().__init__(color, screen_center)
+        self.smoothed_dir = None
         self.speed = speed
         self.vel = pygame.math.Vector2(0, 0)
         self.starting_pos = pygame.math.Vector2(starting_pos)
@@ -208,32 +214,30 @@ class Paddle(Puck):
 
     def update(self):
         old_pos = pygame.math.Vector2(self.rect.center)
-
         direction = self.get_direction()
-        if direction is None:
+
+        if direction is None or direction.length_squared() == 0:
+            self.vel = pygame.math.Vector2(0, 0)
             return
 
-        distance = direction.length()
+        dir_normalized = direction.normalize()
 
-        if distance != 0:
-            direction = direction.normalize()
-            movement = direction * min(self.speed, distance)
-            self.rect.centerx += movement.x
-            self.rect.centery += movement.y
+        distance_to_target = direction.length()
+        movement_step = min(distance_to_target, self.speed)
+
+        movement = dir_normalized * movement_step
+
+        self.rect.centerx += movement.x
+        self.rect.centery += movement.y
 
         self.handle_collision()
 
-        new_pos = pygame.math.Vector2(self.rect.center)
-        self.vel = new_pos - old_pos
+        self.vel = pygame.math.Vector2(self.rect.center) - old_pos
 
     def get_direction(self) -> pygame.Vector2:
         return None
 
     def handle_collision(self):
-        if self.divider:
-            if self.rect.right > self.divider.rect.left:
-                self.rect.right = self.divider.rect.left
-
         if self.rect.left < 0:
             self.rect.left = 0
         if self.rect.right > self.screen.get_width():
@@ -245,14 +249,14 @@ class Paddle(Puck):
 
 
 class PlayerPaddle(Paddle):
-    def __init__(self, color, starting_pos, screen_center, speed=25):
-        super().__init__(color, starting_pos, screen_center, speed)
+    def __init__(self, color, starting_pos, screen, screen_center, speed=25):
+        super().__init__(color, starting_pos, screen, screen_center, speed)
 
     def reset(self):
         super().reset()
         pygame.mouse.set_pos(self.starting_pos)
 
-    def update_mouse(self):
+    def get_mouse_target(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
         min_x = self.radius
@@ -263,11 +267,42 @@ class PlayerPaddle(Paddle):
         clamped_x = max(min_x, min(mouse_x, max_x))
         clamped_y = max(min_y, min(mouse_y, max_y))
 
-        if (mouse_x, mouse_y) != (clamped_x, clamped_y):
-            pygame.mouse.set_pos((clamped_x, clamped_y))
-
         return pygame.math.Vector2(clamped_x, clamped_y)
 
-    def get_direction(self):
-        mouse_pos = self.update_mouse()
-        return mouse_pos - pygame.math.Vector2(self.rect.center)
+    def get_direction(self) -> pygame.Vector2:
+        target = self.get_mouse_target()
+
+        direction = target - pygame.math.Vector2(self.rect.center)
+
+        if direction.length_squared() < 4:
+            return pygame.math.Vector2(0, 0)
+        return direction
+
+
+class ComputerPaddle(Paddle):
+    def __init__(self, color, starting_pos, screen, screen_center, goal: Goal, puck: GamePuck, speed=25):
+        super().__init__(color, starting_pos, screen, screen_center, speed)
+        self.goal = goal
+        self.puck = puck
+
+    def get_direction(self) -> pygame.Vector2:
+        puck_pos = self.puck.pos
+        target = pygame.Vector2(puck_pos[0], puck_pos[1])
+
+        if self.divider:
+            min_x = self.divider.rect.right + self.radius
+            target.x = max(target.x, min_x)
+
+        direction = target - pygame.Vector2(self.rect.center)
+
+        if direction.length_squared() < 4:
+            return pygame.math.Vector2(0, 0)
+
+        return direction
+
+    def handle_collision(self):
+        super().handle_collision()
+
+        if self.divider:
+            if self.rect.left < self.divider.rect.right:
+                self.rect.left = self.divider.rect.right
