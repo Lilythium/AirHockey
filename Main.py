@@ -109,9 +109,11 @@ class GamePuck(Puck):
         self.last_sound_effect_trigger = 0
 
         self.edges = edge_group
+        self.prev_pos = pygame.Vector2(self.pos)
 
     def update(self):
         self.apply_friction()
+        self.prev_pos = pygame.Vector2(self.pos)
         super().update()
 
         self.handle_wall_collision()
@@ -179,22 +181,40 @@ class GamePuck(Puck):
             else:
                 edgeRect = edge.bottomRect
 
-            closest_x = max(edgeRect.left, min(self.pos.x, edgeRect.right))
-            closest_y = max(edgeRect.top, min(self.pos.y, edgeRect.bottom))
+            # Determine which vertical boundary we care about
+            if self.vel.x > 0:
+                boundary_x = edgeRect.left
+            else:
+                boundary_x = edgeRect.right
 
-            distance_x = self.pos.x - closest_x
-            distance_y = self.pos.y - closest_y
+            # Check if we crossed the boundary this frame
+            crossed = (
+                    (self.prev_pos.x - boundary_x) * (self.pos.x - boundary_x) <= 0
+            )
 
-            if (distance_x ** 2 + distance_y ** 2) < (self.radius ** 2):
-                collision_normal = pygame.math.Vector2(distance_x, distance_y)
+            if not crossed:
+                continue
 
-                overlap = self.radius - collision_normal.length()
+            # Check if y is within the vertical span of the edge
+            if not (edgeRect.top <= self.pos.y <= edgeRect.bottom):
+                continue
 
-                self.resolve_collision(
-                    normal=collision_normal,
-                    overlap=overlap,
-                    elasticity=self.wall_elasticity
-                )
+            # Collision normal (pure horizontal wall)
+            if self.vel.x > 0:
+                normal = pygame.math.Vector2(-1, 0)
+            else:
+                normal = pygame.math.Vector2(1, 0)
+
+            # Snap puck to boundary (prevents sinking)
+            if self.vel.x > 0:
+                self.pos.x = boundary_x - self.radius
+            else:
+                self.pos.x = boundary_x + self.radius
+
+            self.resolve_collision(
+                normal=normal,
+                elasticity=self.wall_elasticity
+            )
 
         # Vertical
         if self.pos.y - self.radius < 0:  # Hit Top
