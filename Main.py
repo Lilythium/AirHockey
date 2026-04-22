@@ -48,17 +48,30 @@ class Goal(pygame.sprite.Sprite):
 class VerticalEdge:
     def __init__(self, goal: Goal):
         self.goal = goal
-        x = goal.rect.centerx
+
+        extend = 50
+        edge_x = goal.rect.centerx
+
+        if goal.rect.centerx < screen_center[0]:
+            # Extend left
+            x = edge_x - extend
+            width = extend
+        else:
+            # Extend right
+            x = edge_x
+            width = extend
+
         self.topRect = pygame.Rect(
             x,
             0,
-            1,
+            width,
             goal.rect.top
         )
+
         self.bottomRect = pygame.Rect(
             x,
             goal.rect.bottom,
-            1,
+            width,
             screen.get_height() - goal.rect.bottom
         )
 
