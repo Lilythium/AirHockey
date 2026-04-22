@@ -1,3 +1,5 @@
+import random
+
 import pygame
 
 
@@ -35,6 +37,91 @@ class PuckGhost(Particle):
         super().update()
 
         # fade alpha based on lifetime ratio
+        alpha = int(255 * (self.lifetime / self.max_lifetime))
+        self.image.set_alpha(alpha)
+
+    def draw(self, surface):
+        rect = self.image.get_rect(center=self.pos)
+        surface.blit(self.image, rect)
+
+
+class GoalBurst(Particle):
+    def __init__(self, pos, screen_center, puck_vel, lifetime=40, mode="core"):
+        self.mode = mode
+        if puck_vel.length_squared() > 0:
+            base_dir = (-puck_vel).normalize()
+        else:
+            base_dir = pygame.math.Vector2(1, 0)
+
+        random_dir = pygame.math.Vector2(
+            random.uniform(-1, 1),
+            random.uniform(-1, 1)
+        )
+
+        if random_dir.length_squared() > 0:
+            random_dir = random_dir.normalize()
+
+        # weight: higher = more influence from puck direction
+        direction_weight = 0.85
+
+        spread_dir = (base_dir * direction_weight + random_dir * (1 - direction_weight))
+        if spread_dir.length_squared() > 0:
+            spread_dir = spread_dir.normalize()
+
+        puck_speed = puck_vel.length()
+
+        if mode == "core":
+            speed = random.uniform(2.0, 4.0) + (puck_speed ** 1.2) * 0.4
+            self.dampen = 0.94 + min(puck_speed / 60, 0.04)
+            self.radius = random.randint(2, 5)
+
+        else:  # outer burst
+            spread_dir = random_dir
+            speed = random.uniform(1, 3)
+            self.dampen = 0.8
+            self.radius = random.randint(6, 14)
+            lifetime *= 1.15
+
+        vel = spread_dir * speed
+
+        self.dampen = 0.80 + min(puck_speed / 100, 0.05)
+        self.puck_vel = puck_vel
+
+        super().__init__(pos, vel, lifetime)
+
+        self.screen_center = pygame.math.Vector2(screen_center)
+
+        self.radius = random.randint(2, 9)
+        self.color = (255, 215, 0)
+
+        self.image = pygame.Surface((self.radius * 2, self.radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, self.color, (self.radius, self.radius), self.radius)
+        if mode == "outer":
+            self.image.set_alpha(180)
+
+        self.max_lifetime = lifetime
+
+    def update(self):
+        direction = self.screen_center - self.pos
+
+        if self.mode == "core":
+            self.vel.x += direction.x * 0.003
+        else:
+            self.vel.x += direction.x * 0.0005
+            self.vel.y += random.uniform(-0.03, 0.03)
+
+        if direction.y != 0:
+            puck_y_sign = 1 if self.puck_vel.y >= 0 else -1
+
+            if self.mode == "outer":
+                self.vel.y += puck_y_sign * 0.08
+            else:
+                self.vel.y += puck_y_sign * 0.05
+
+        self.vel *= self.dampen
+
+        super().update()
+
         alpha = int(255 * (self.lifetime / self.max_lifetime))
         self.image.set_alpha(alpha)
 

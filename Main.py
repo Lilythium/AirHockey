@@ -1,8 +1,11 @@
+import random
 from sys import exit
+
 import pygame
-import particles
+
 import GameObjects
 import RinkObjects
+import particles
 
 pygame.init()
 
@@ -29,10 +32,9 @@ rink_objects = pygame.sprite.Group()
 rink_objects.add(divider, leftGoal, rightGoal)
 
 particle_manager = particles.ParticleManager()
-puck = GameObjects.GamePuck((0, 0, 0), particle_manager, edges, screen, screen_center)
+puck = GameObjects.GamePuck((190, 60, 60), particle_manager, edges, screen, screen_center)
 compPlayer = GameObjects.ComputerPaddle((50, 50, 50), (screen.get_width() - 30, screen.get_height() // 2 - 25), screen,
                                         screen_center, rightGoal, puck)
-
 
 game_objects = pygame.sprite.Group()
 game_objects.add(player, compPlayer, puck)
@@ -49,11 +51,44 @@ game_time = 180
 def trigger_score(player_num):
     scores[player_num] += 1
     # spawn particles here
+    spawn_goal_burst(
+        pos=puck.rect.center,
+        puck_vel=puck.vel,
+        count=50
+    )
     # trigger UI update for score display
     print(scores)
     puck.reset()
     player.reset()
     compPlayer.reset()
+
+
+def spawn_goal_burst(pos, puck_vel, count=50):
+    for _ in range(count):
+        spawn_pos = pygame.math.Vector2(pos) + pygame.math.Vector2(
+            random.uniform(-10, 10),
+            random.uniform(-6, 6)
+        )
+        spawn_pos += puck_vel.normalize() * 5
+        # particle_manager.add(
+        #     particles.GoalBurst(
+        #         spawn_pos,
+        #         screen_center,
+        #         puck_vel=puck_vel,
+        #         lifetime=random.randint(20, 35),
+        #         mode="core"
+        #     )
+        # )
+
+        if random.random() < 0.8:
+            particle_manager.add(
+                particles.GoalBurst(
+                    spawn_pos,
+                    screen_center,
+                    puck_vel=puck_vel,
+                    mode="outer"
+                )
+            )
 
 
 while True:
