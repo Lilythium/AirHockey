@@ -3,6 +3,8 @@ from sys import exit
 
 import pygame
 
+import particles
+
 pygame.init()
 pygame.mixer.init()
 
@@ -44,12 +46,17 @@ class Puck(pygame.sprite.Sprite):
 
 
 class GamePuck(Puck):
-    def __init__(self, color, player, friction=0.995, wall_elasticity=0.9, player_elasticity=0.8):
+    def __init__(self, color, player, particle_manager, friction=0.995, wall_elasticity=0.9, player_elasticity=0.8):
         super().__init__(color, 20)
         self.player = player
         self.friction = friction
         self.wall_elasticity = wall_elasticity
         self.player_elasticity = player_elasticity
+        self.particle_manager = particle_manager
+
+        self.ghost_timer = 0
+        self.ghost_interval = 0.33
+        self.ghost_speed_threshold = 10
 
         self.last_sound_effect_trigger = 0
 
@@ -63,6 +70,25 @@ class GamePuck(Puck):
         if self.last_sound_effect_trigger > 0:
             self.last_sound_effect_trigger -= 1
 
+        if self.vel.length() > self.ghost_speed_threshold:
+            self.handle_trail_effect()
+        else:
+            self.ghost_timer = 0
+
+    def handle_trail_effect(self):
+        self.ghost_timer += 1
+
+        if self.ghost_timer >= self.ghost_interval:
+            self.ghost_timer = 0
+
+            self.particle_manager.add(
+                particles.PuckGhost(
+                    pos=self.rect.center,
+                    size=self.rect.width,
+                    lifetime=15
+                )
+            )
+
     def apply_friction(self):
         self.vel *= self.friction
 
@@ -70,7 +96,6 @@ class GamePuck(Puck):
         if self.last_sound_effect_trigger <= 0:
             self.last_sound_effect_trigger += 15
             random.choice(hit_sounds).play()
-
 
     def handle_wall_collision(self):
         """Bounce off screen edges using center position and radius."""
@@ -171,7 +196,8 @@ class PlayerPuck(Puck):
 # Sprite setup
 player = PlayerPuck((50, 50, 50))
 divider = Divider()
-puck = GamePuck((0, 0, 0), player)
+particle_manager = particles.ParticleManager()
+puck = GamePuck((0, 0, 0), player, particle_manager)
 game_objects = pygame.sprite.Group()
 game_objects.add(Divider(), player, puck)
 player.divider = divider
@@ -183,7 +209,12 @@ while True:
             exit()
 
     screen.fill(ice_color)
+
+    particle_manager.update()
+    particle_manager.draw(screen)
+
     game_objects.draw(screen)
     game_objects.update()
+
     pygame.display.update()
     clock.tick(60)
