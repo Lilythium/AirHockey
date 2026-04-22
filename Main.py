@@ -112,6 +112,10 @@ class GamePuck(Puck):
         else:
             self.ghost_timer = 0
 
+    def reset(self):
+        self.vel = pygame.math.Vector2(0, 0)
+        self.pos = screen_center
+
     def handle_trail_effect(self):
         self.ghost_timer += 1
 
@@ -272,12 +276,35 @@ game_objects = pygame.sprite.Group()
 game_objects.add(player, puck)
 player.divider = divider
 
+# game variables
+scores = [0, 0]
+game_time = 180
+
+
+# game functions
+def trigger_score(player_num):
+    scores[player_num] += 1
+    # spawn particles here
+    # trigger UI update for score display
+    print(scores)
+    # update puck position
+    puck.reset()
+
+
 while True:
+    # inputs
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
 
+    # game logic
+    if puck.pos[0] < 0 - puck.radius:
+        trigger_score(1)
+    elif puck.pos[0] > screen.get_width() + puck.radius:
+        trigger_score(0)
+
+    # rendering and updates
     screen.fill(ice_color)
 
     rink_objects.draw(screen)
