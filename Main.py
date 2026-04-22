@@ -268,10 +268,27 @@ class PlayerPuck(Puck):
         self.rect.center = self.starting_pos
         pygame.mouse.set_pos(self.starting_pos)
 
+    def update_mouse(self):
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+
+        # --- Clamp mouse to allowed region ---
+        min_x = self.radius
+        max_x = self.divider.rect.left - self.radius
+        min_y = self.radius
+        max_y = screen.get_height() - self.radius
+
+        clamped_x = max(min_x, min(mouse_x, max_x))
+        clamped_y = max(min_y, min(mouse_y, max_y))
+
+        # Force mouse back inside bounds if it tried to escape
+        if (mouse_x, mouse_y) != (clamped_x, clamped_y):
+            pygame.mouse.set_pos((clamped_x, clamped_y))
+
+        return pygame.math.Vector2(clamped_x, clamped_y)
+
     def update(self):
         old_pos = pygame.math.Vector2(self.rect.center)
-
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = self.update_mouse()
         direction = pygame.math.Vector2(mouse_pos) - pygame.math.Vector2(self.rect.center)
         distance = direction.length()
 
@@ -303,6 +320,7 @@ class PlayerPuck(Puck):
 player = PlayerPuck((50, 50, 50), (30, screen.get_height() // 2 - 25))
 pygame.mouse.set_pos((30, screen.get_height() // 2 - 25))
 pygame.mouse.set_visible(False)
+pygame.event.set_grab(True)
 
 divider = Divider()
 leftGoal = Goal()
@@ -340,6 +358,11 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                pygame.quit()
+                exit()
 
     # game logic
     if puck.pos[0] < 0 - puck.radius:
