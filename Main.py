@@ -29,10 +29,16 @@ rink_objects = pygame.sprite.Group()
 rink_objects.add(divider, leftGoal, rightGoal)
 
 particle_manager = particles.ParticleManager()
-puck = GameObjects.GamePuck((0, 0, 0), player, particle_manager, edges, screen, screen_center)
+puck = GameObjects.GamePuck((0, 0, 0), particle_manager, edges, screen, screen_center)
+compPlayer = GameObjects.ComputerPaddle((50, 50, 50), (screen.get_width() - 30, screen.get_height() // 2 - 25), screen,
+                                        screen_center, rightGoal, puck)
+
+
 game_objects = pygame.sprite.Group()
-game_objects.add(player, puck)
+game_objects.add(player, compPlayer, puck)
 player.divider = divider
+compPlayer.divider = divider
+puck.paddles = [player, compPlayer]
 
 # game variables
 scores = [0, 0]
