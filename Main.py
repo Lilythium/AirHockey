@@ -8,7 +8,7 @@ import particles
 pygame.init()
 pygame.mixer.init()
 
-screen = pygame.display.set_mode((900, 400))
+screen = pygame.display.set_mode((950, 450))
 pygame.display.set_caption('Air Hockey')
 clock = pygame.time.Clock()
 
@@ -29,6 +29,21 @@ class Divider(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
 
 
+class Goal(pygame.sprite.Sprite):
+    def __init__(self, xPos=0):
+        super().__init__()
+
+        width = screen.get_height() // 3.75
+        height = screen.get_height() // 3.25
+
+        self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+        color = (130, 200, 255)
+
+        pygame.draw.ellipse(self.image, color, self.image.get_rect())
+
+        self.rect = self.image.get_rect(center=(xPos, screen.get_height() // 2))
+
+
 class Puck(pygame.sprite.Sprite):
     def __init__(self, color, radius=25):
         super().__init__()
@@ -38,7 +53,7 @@ class Puck(pygame.sprite.Sprite):
         pygame.draw.circle(self.image, color, (radius, radius), radius)
         self.rect = self.image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
         self.pos = pygame.math.Vector2(self.rect.center)
-        self.vel = pygame.math.Vector2(5, 2)
+        self.vel = pygame.math.Vector2(0, 0)
 
     def update(self):
         self.pos += self.vel
@@ -156,7 +171,7 @@ class GamePuck(Puck):
 
 
 class PlayerPuck(Puck):
-    def __init__(self, color, speed=20):
+    def __init__(self, color, speed=22):
         super().__init__(color)
         self.divider = None
         self.speed = speed
@@ -196,6 +211,11 @@ class PlayerPuck(Puck):
 # Sprite setup
 player = PlayerPuck((50, 50, 50))
 divider = Divider()
+leftGoal = Goal()
+rightGoal = Goal(xPos=screen.get_width())
+rink_objects = pygame.sprite.Group()
+rink_objects.add(divider, leftGoal, rightGoal)
+
 particle_manager = particles.ParticleManager()
 puck = GamePuck((0, 0, 0), player, particle_manager)
 game_objects = pygame.sprite.Group()
@@ -209,8 +229,9 @@ while True:
             exit()
 
     screen.fill(ice_color)
-    screen.blit(divider.image, divider.rect)  # Must be rendered separately so it stays below pucks
-    # TODO: 'rink' sprite group for divider and goals
+
+    rink_objects.draw(screen)
+    rink_objects.update()
 
     particle_manager.update()
     particle_manager.draw(screen)
