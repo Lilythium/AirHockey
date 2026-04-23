@@ -43,7 +43,7 @@ class GamePuck(Puck):
 
         self.ghost_timer = 0
         self.ghost_interval = 0.001
-        self.ghost_speed_threshold = 1600
+        self.ghost_speed_threshold = 1500
 
         self.last_sound_effect_trigger = 0
 
