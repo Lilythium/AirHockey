@@ -1,4 +1,5 @@
 import random
+from math import ceil
 from sys import exit
 
 import pygame
@@ -7,6 +8,7 @@ import GameObjects
 import RinkObjects
 import particles
 from GUI import TextBox, Text
+from StateMachines import GameStateMachine
 
 pygame.init()
 
@@ -18,7 +20,7 @@ clock = pygame.time.Clock()
 ice_color = (200, 230, 255)
 
 # Sprite setup
-player = GameObjects.PlayerPaddle((50, 50, 50), (30, screen.get_height() // 2 - 25), screen, screen_center)
+player = GameObjects.PlayerPaddle((50, 50, 50), (30, screen.get_height() // 2), screen, screen_center)
 pygame.mouse.set_pos((30, screen.get_height() // 2 - 25))
 pygame.mouse.set_visible(False)
 pygame.event.set_grab(True)
@@ -34,7 +36,7 @@ rink_objects.add(divider, leftGoal, rightGoal)
 
 particle_manager = particles.ParticleManager()
 puck = GameObjects.GamePuck((190, 60, 60), particle_manager, edges, screen, screen_center)
-compPlayer = GameObjects.ComputerPaddle((50, 50, 50), (screen.get_width() - 30, screen.get_height() // 2 - 25), screen,
+compPlayer = GameObjects.ComputerPaddle((50, 50, 50), (screen.get_width() - 30, screen.get_height() // 2), screen,
                                         screen_center, rightGoal, puck)
 
 game_objects = pygame.sprite.Group()
@@ -77,6 +79,9 @@ scores = [0, 0]
 game_time = 180
 dt = 0.01
 
+game_state = GameStateMachine()
+game_state.freeze(duration=1)
+
 
 # game functions
 def trigger_score(player_num):
@@ -87,11 +92,12 @@ def trigger_score(player_num):
         puck_vel=puck.vel,
         count=50
     )
-    # trigger UI update for score display
     update_score_display()
+    game_state.freeze(duration=1.5)
     puck.reset()
     player.reset()
     compPlayer.reset()
+    game_objects.update(dt)
 
 
 def update_score_display():
@@ -100,13 +106,13 @@ def update_score_display():
 
 
 def update_timer(time_remaining):
-    time = round(time_remaining)
-    minutes = time // 60
+    time = ceil(time_remaining)
+    minutes = min(time // 60, 99)
     seconds = time % 60
 
-    minstr = str(minutes) if minutes > 10 else f"0{minutes}"
+    minStr = str(minutes) if minutes > 10 else f"0{minutes}"
     secStr = str(seconds) if seconds > 10 else f"0{seconds}"
-    timeDisplay.update_text(f"{minstr}:{secStr}")
+    timeDisplay.update_text(f"{minStr}:{secStr}")
 
 
 def spawn_goal_burst(pos, puck_vel, count=50):
@@ -148,29 +154,36 @@ while True:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 exit()
+    game_state.update(dt)
 
-    # game logic
-    if puck.pos[0] < 0 - puck.radius:
-        trigger_score(1)
-    elif puck.pos[0] > screen.get_width() + puck.radius:
-        trigger_score(0)
+    # Game Logic
+    if game_state.game_active.is_active:
+        if puck.pos[0] < 0 - puck.radius:
+            trigger_score(1)
+        elif puck.pos[0] > screen.get_width() + puck.radius:
+            trigger_score(0)
+
+        game_time -= dt
+        update_timer(game_time)
+
+        if game_time <= 0:
+            game_state.end_game()
 
     # rendering and updates
     screen.fill(ice_color)
 
     rink_objects.draw(screen)
-    rink_objects.update(dt)
 
+    if game_state.game_active.is_active:
+        rink_objects.update(dt)
+        game_objects.update(dt)
+
+    # allow particles during frozen state (looks better)
     particle_manager.update(dt)
+
     particle_manager.draw(screen)
-
     game_objects.draw(screen)
-    game_objects.update(dt)
-
     gui_objects.draw(screen)
-
-    game_time -= dt
-    update_timer(game_time)
 
     pygame.display.update()
     dt = min(clock.tick(60) / 1000, 0.02)
