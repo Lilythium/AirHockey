@@ -6,6 +6,7 @@ import pygame
 import GameObjects
 import RinkObjects
 import particles
+from GUI import TextBox, Text
 
 pygame.init()
 
@@ -42,6 +43,35 @@ player.divider = divider
 compPlayer.divider = divider
 puck.paddles = [player, compPlayer]
 
+# game screen GUI
+
+timeDisplay = TextBox(
+    pos=(screen_center[0], 30),
+    width=170,
+    height=60,
+    text="88:88",
+    box_color='Black',
+    text_color='Red',
+    fontOption=0
+)
+leftScore = Text(
+    pos=(30, 40),
+    width=60,
+    height=80,
+    text="0",
+    fontOption=1
+)
+rightScore = Text(
+    pos=(screen.get_width() - 30, 40),
+    width=60,
+    height=80,
+    text="0",
+    fontOption=1
+)
+
+gui_objects = pygame.sprite.Group()
+gui_objects.add(timeDisplay, leftScore, rightScore)
+
 # game variables
 scores = [0, 0]
 game_time = 180
@@ -57,10 +87,15 @@ def trigger_score(player_num):
         count=50
     )
     # trigger UI update for score display
-    print(scores)
+    update_score_display()
     puck.reset()
     player.reset()
     compPlayer.reset()
+
+
+def update_score_display():
+    leftScore.update_text(f"{scores[0]}")
+    rightScore.update_text(f"{scores[1]}")
 
 
 def spawn_goal_burst(pos, puck_vel, count=50):
@@ -121,5 +156,7 @@ while True:
     game_objects.draw(screen)
     game_objects.update()
 
+    gui_objects.draw(screen)
+
     pygame.display.update()
-    clock.tick(60)
+    dt = clock.tick(60) / 1000
