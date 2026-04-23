@@ -168,7 +168,8 @@ while True:
 
         if game_time <= 0:
             game_state.end_game()
-
+    elif game_state.game_frozen.is_active:
+        pygame.mouse.set_pos(player.rect.center)
     # rendering and updates
     screen.fill(ice_color)
 
@@ -178,7 +179,6 @@ while True:
         rink_objects.update(dt)
         game_objects.update(dt)
 
-    # allow particles during frozen state (looks better)
     particle_manager.update(dt)
 
     particle_manager.draw(screen)
