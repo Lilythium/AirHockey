@@ -25,13 +25,13 @@ class Puck(pygame.sprite.Sprite):
         self.pos = pygame.math.Vector2(screen_center)
         self.vel = pygame.math.Vector2(0, 0)
 
-    def update(self):
-        self.pos += self.vel
+    def update(self, dt):
+        self.pos += self.vel * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
 
 
 class GamePuck(Puck):
-    def __init__(self, color, particle_manager, edge_group, screen, screen_center, friction=0.995,
+    def __init__(self, color, particle_manager, edge_group, screen, screen_center, friction=0.74,
                  wall_elasticity=0.9,
                  player_elasticity=0.8):
         super().__init__(color, screen_center, 20)
@@ -42,8 +42,8 @@ class GamePuck(Puck):
         self.particle_manager = particle_manager
 
         self.ghost_timer = 0
-        self.ghost_interval = 0.33
-        self.ghost_speed_threshold = 10
+        self.ghost_interval = 0.001
+        self.ghost_speed_threshold = 1600
 
         self.last_sound_effect_trigger = 0
 
@@ -52,28 +52,30 @@ class GamePuck(Puck):
 
         self.screen = screen
 
-    def update(self):
-        self.apply_friction()
+    def update(self, dt):
+        self.apply_friction(dt)
         self.prev_pos = pygame.Vector2(self.pos)
-        super().update()
+        super().update(dt)
 
         self.handle_wall_collision()
         self.handle_player_collision()
 
         if self.last_sound_effect_trigger > 0:
-            self.last_sound_effect_trigger -= 1
+            self.last_sound_effect_trigger -= dt
 
         if self.vel.length() > self.ghost_speed_threshold:
-            self.handle_trail_effect()
+            self.handle_trail_effect(dt)
         else:
             self.ghost_timer = 0
 
     def reset(self):
         self.vel = pygame.math.Vector2(0, 0)
-        self.pos = self.screen_center
+        self.pos = pygame.math.Vector2(self.screen_center)
+        self.prev_pos = pygame.math.Vector2(self.screen_center)
+        self.rect.center = self.screen_center
 
-    def handle_trail_effect(self):
-        self.ghost_timer += 1
+    def handle_trail_effect(self, dt):
+        self.ghost_timer += dt
 
         if self.ghost_timer >= self.ghost_interval:
             self.ghost_timer = 0
@@ -82,16 +84,16 @@ class GamePuck(Puck):
                 particles.PuckGhost(
                     pos=self.rect.center,
                     size=self.rect.width,
-                    lifetime=15
+                    lifetime=0.25
                 )
             )
 
-    def apply_friction(self):
-        self.vel *= self.friction
+    def apply_friction(self, dt):
+        self.vel *= self.friction ** dt
 
     def produce_collision_sound(self):
         if self.last_sound_effect_trigger <= 0:
-            self.last_sound_effect_trigger += 15
+            self.last_sound_effect_trigger = 0.1
             random.choice(hit_sounds).play()
 
     def resolve_collision(self, normal, overlap=0, other_vel=pygame.math.Vector2(0, 0), elasticity=1.0):
@@ -212,7 +214,7 @@ class Paddle(Puck):
         self.pos = self.starting_pos
         self.rect.center = self.starting_pos
 
-    def update(self):
+    def update(self, dt):
         old_pos = pygame.math.Vector2(self.rect.center)
         direction = self.get_direction()
 
@@ -223,8 +225,7 @@ class Paddle(Puck):
         dir_normalized = direction.normalize()
 
         distance_to_target = direction.length()
-        movement_step = min(distance_to_target, self.speed)
-
+        movement_step = min(distance_to_target, self.speed * dt)
         movement = dir_normalized * movement_step
 
         self.rect.centerx += movement.x
@@ -232,7 +233,7 @@ class Paddle(Puck):
 
         self.handle_collision()
 
-        self.vel = pygame.math.Vector2(self.rect.center) - old_pos
+        self.vel = (pygame.math.Vector2(self.rect.center) - old_pos) / dt
 
     def get_direction(self) -> pygame.Vector2:
         return None
@@ -249,7 +250,7 @@ class Paddle(Puck):
 
 
 class PlayerPaddle(Paddle):
-    def __init__(self, color, starting_pos, screen, screen_center, speed=25):
+    def __init__(self, color, starting_pos, screen, screen_center, speed=1500):
         super().__init__(color, starting_pos, screen, screen_center, speed)
 
     def reset(self):
@@ -280,7 +281,7 @@ class PlayerPaddle(Paddle):
 
 
 class ComputerPaddle(Paddle):
-    def __init__(self, color, starting_pos, screen, screen_center, goal: Goal, puck: GamePuck, speed=25):
+    def __init__(self, color, starting_pos, screen, screen_center, goal: Goal, puck: GamePuck, speed=1500):
         super().__init__(color, starting_pos, screen, screen_center, speed)
         self.goal = goal
         self.puck = puck

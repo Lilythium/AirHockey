@@ -75,6 +75,7 @@ gui_objects.add(timeDisplay, leftScore, rightScore)
 # game variables
 scores = [0, 0]
 game_time = 180
+dt = 0.01
 
 
 # game functions
@@ -96,6 +97,16 @@ def trigger_score(player_num):
 def update_score_display():
     leftScore.update_text(f"{scores[0]}")
     rightScore.update_text(f"{scores[1]}")
+
+
+def update_timer(time_remaining):
+    time = round(time_remaining)
+    minutes = time // 60
+    seconds = time % 60
+
+    minstr = str(minutes) if minutes > 10 else f"0{minutes}"
+    secStr = str(seconds) if seconds > 10 else f"0{seconds}"
+    timeDisplay.update_text(f"{minstr}:{secStr}")
 
 
 def spawn_goal_burst(pos, puck_vel, count=50):
@@ -148,15 +159,18 @@ while True:
     screen.fill(ice_color)
 
     rink_objects.draw(screen)
-    rink_objects.update()
+    rink_objects.update(dt)
 
-    particle_manager.update()
+    particle_manager.update(dt)
     particle_manager.draw(screen)
 
     game_objects.draw(screen)
-    game_objects.update()
+    game_objects.update(dt)
 
     gui_objects.draw(screen)
 
+    game_time -= dt
+    update_timer(game_time)
+
     pygame.display.update()
-    dt = clock.tick(60) / 1000
+    dt = min(clock.tick(60) / 1000, 0.02)
