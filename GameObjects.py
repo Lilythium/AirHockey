@@ -268,48 +268,55 @@ class PlayerPaddle(Paddle):
 
 
 class ComputerPaddle(Paddle):
-    def __init__(self, color, starting_pos, screen, screen_center, goal: Goal, puck: GamePuck, speed=1500):
+    def __init__(self, color, starting_pos, screen, screen_center,
+                 goal: Goal, puck: GamePuck, speed=1500, side='right'):
         super().__init__(color, starting_pos, screen, screen_center, speed)
         self.goal = goal
         self.puck = puck
+        self.side = side  # 'right' or 'left'
 
         self.reaction_time = 0.15
         self.reaction_timer = 0
         self.cached_target = pygame.Vector2(self.rect.center)
         self.move_vel = pygame.Vector2(0, 0)
 
+    def _puck_on_my_side(self):
+        if self.side == 'right':
+            return self.puck.pos.x > self.screen_center[0]
+        return self.puck.pos.x < self.screen_center[0]
+
     def get_direction(self) -> pygame.Vector2:
-        if self.puck.pos.x < self.screen_center[0]:
+        if not self._puck_on_my_side():
             target = pygame.Vector2(self.starting_pos)
         else:
             target = self.cached_target
 
-            # --- Overshoot logic ---
             to_target = target - pygame.Vector2(self.rect.center)
             if to_target.length_squared() > 0 and to_target.length() < 150:
                 speed_factor = min(self.move_vel.length() / self.speed, 1)
                 overshoot_amount = 15 + 25 * speed_factor
-                overshoot_dir = to_target.normalize()
-                target += overshoot_dir * overshoot_amount
-            # -----------------------
+                target += to_target.normalize() * overshoot_amount
 
         if self.divider:
-            min_x = self.divider.rect.right + self.radius
-            target.x = max(target.x, min_x)
+            if self.side == 'right':
+                target.x = max(target.x, self.divider.rect.right + self.radius)
+            else:
+                target.x = min(target.x, self.divider.rect.left - self.radius)
 
         direction = target - pygame.Vector2(self.rect.center)
 
         if direction.length_squared() < 250:
             return pygame.Vector2(0, 0)
-
         return direction
 
     def handle_collision(self):
         super().handle_collision()
-
         if self.divider:
-            if self.rect.left < self.divider.rect.right:
+            if self.side == 'right' and self.rect.left < self.divider.rect.right:
                 self.rect.left = self.divider.rect.right
+                self.pos = pygame.math.Vector2(self.rect.center)
+            elif self.side == 'left' and self.rect.right > self.divider.rect.left:
+                self.rect.right = self.divider.rect.left
                 self.pos = pygame.math.Vector2(self.rect.center)
 
     def update(self, dt):

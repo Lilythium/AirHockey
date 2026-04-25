@@ -1,233 +1,32 @@
-import random
-from math import ceil
-from sys import exit
-
 import pygame
-
-import GameObjects
-import RinkObjects
-import particles
-from GUI import TextBox, Text, NotificationText
-from StateMachines import GameStateMachine
+from sys import exit
+from start_screen import StartScreen
+from game import GameScreen
 
 pygame.init()
-
 screen = pygame.display.set_mode((950, 450))
-screen_center = (screen.get_width() // 2, screen.get_height() // 2)
 pygame.display.set_caption('Air Hockey')
 clock = pygame.time.Clock()
-
-ice_color = (200, 230, 255)
-
-# Sprite setup
-player = GameObjects.PlayerPaddle((50, 50, 50), (30, screen.get_height() // 2), screen, screen_center)
-pygame.mouse.set_pos((30, screen.get_height() // 2 - 25))
-pygame.mouse.set_visible(False)
-pygame.event.set_grab(True)
-
-divider = RinkObjects.Divider(screen, screen_center)
-leftGoal = RinkObjects.Goal(screen)
-rightGoal = RinkObjects.Goal(screen, xPos=screen.get_width())
-leftEdge = RinkObjects.VerticalEdge(screen, screen_center, leftGoal)
-rightEdge = RinkObjects.VerticalEdge(screen, screen_center, rightGoal)
-edges = [leftEdge, rightEdge]
-rink_objects = pygame.sprite.Group()
-rink_objects.add(divider, leftGoal, rightGoal)
-
-particle_manager = particles.ParticleManager()
-puck = GameObjects.GamePuck((190, 60, 60), particle_manager, edges, screen, screen_center)
-compPlayer = GameObjects.ComputerPaddle((50, 50, 50), (screen.get_width() - 30, screen.get_height() // 2), screen,
-                                        screen_center, rightGoal, puck)
-
-game_objects = pygame.sprite.Group()
-game_objects.add(player, compPlayer, puck)
-player.divider = divider
-compPlayer.divider = divider
-puck.paddles = [player, compPlayer]
-
-# game screen GUI
-
-timeDisplay = TextBox(
-    pos=(screen_center[0], 30),
-    width=170,
-    height=60,
-    text="88:88",
-    box_color='Black',
-    text_color='Red',
-    fontOption=0
-)
-leftScore = Text(
-    pos=(30, 40),
-    width=60,
-    height=80,
-    text="0",
-    fontOption=1
-)
-rightScore = Text(
-    pos=(screen.get_width() - 30, 40),
-    width=60,
-    height=80,
-    text="0",
-    fontOption=1
-)
-
-gui_objects = pygame.sprite.Group()
-gui_objects.add(timeDisplay, leftScore, rightScore)
-
-# game variables
-scores = [0, 0]
-game_time = 180
 dt = 0.01
-
-window_focused = True
-focus_resume_timer = 0.0
-
-game_state = GameStateMachine()
-game_state.freeze(duration=1)
-
-
-# game functions
-def trigger_score(player_num):
-    scores[player_num] += 1
-    # spawn particles here
-    spawn_goal_burst(
-        pos=puck.rect.center,
-        puck_vel=puck.vel,
-        count=50
-    )
-    update_score_display()
-    game_state.freeze(duration=1.5)
-
-    spawn_notif_text(f"Player {player_num + 1} Scored!")
-
-    puck.reset()
-    player.reset()
-    compPlayer.reset()
-    game_objects.update(dt)
-
-
-def update_score_display():
-    leftScore.update_text(f"{scores[0]}")
-    rightScore.update_text(f"{scores[1]}")
-
-
-def update_timer(time_remaining):
-    time = ceil(time_remaining)
-    minutes = min(time // 60, 99)
-    seconds = time % 60
-
-    minStr = str(minutes) if minutes >= 10 else f"0{minutes}"
-    secStr = str(seconds) if seconds >= 10 else f"0{seconds}"
-    timeDisplay.update_text(f"{minStr}:{secStr}")
-
-
-def spawn_notif_text(text, duration=1.75):
-    scoreText = NotificationText(
-        pos=screen_center,
-        text=text,
-        fontOption=1,
-        width=screen.get_width() // 2,
-        height=80,
-        duration=duration
-    )
-    gui_objects.add(scoreText)
-
-
-def spawn_goal_burst(pos, puck_vel, count=50):
-    for _ in range(count):
-        spawn_pos = pygame.math.Vector2(pos) + pygame.math.Vector2(
-            random.uniform(-10, 10),
-            random.uniform(-6, 6)
-        )
-        if puck_vel.length_squared() > 0:
-            spawn_pos += puck_vel.normalize() * 5
-        # particle_manager.add(
-        #     particles.GoalBurst(
-        #         spawn_pos,
-        #         screen_center,
-        #         puck_vel=puck_vel,
-        #         lifetime=random.randint(20, 35),
-        #         mode="core"
-        #     )
-        # )
-
-        if random.random() < 0.8:
-            particle_manager.add(
-                particles.GoalBurst(
-                    spawn_pos,
-                    screen_center,
-                    puck_vel=puck_vel,
-                    mode="outer"
-                )
-            )
-
+current_screen = StartScreen(screen)
 
 while True:
+    events = []
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            pygame.quit()
+            exit()
+        events.append(event)
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                pygame.quit()
-                exit()
-        if event.type == pygame.WINDOWFOCUSLOST:
-            window_focused = False
-        elif event.type == pygame.WINDOWFOCUSGAINED:
-            window_focused = True
-            focus_resume_timer = 1.0
+    result = current_screen.update(dt, events)
+    if result == "game":
+        current_screen = GameScreen(screen)
+    elif result == "start":
+        current_screen = StartScreen(screen)
 
-    if not window_focused or focus_resume_timer > 0:
-        if window_focused and focus_resume_timer > 0:
-            focus_resume_timer -= dt
-    else:
-        game_state.update(dt)
-
-        if game_state.game_active.is_active:
-            if puck.pos[0] < 0 - puck.radius:
-                trigger_score(1)
-            elif puck.pos[0] > screen.get_width() + puck.radius:
-                trigger_score(0)
-
-            game_time -= dt
-            update_timer(game_time)
-
-            if game_time <= 0:
-                game_state.end_game()
-        elif game_state.game_frozen.is_active:
-            pygame.mouse.set_pos(player.rect.center)
-
-    # Game Logic
-    if game_state.game_active.is_active:
-        if puck.pos[0] < 0 - puck.radius:
-            trigger_score(1)
-        elif puck.pos[0] > screen.get_width() + puck.radius:
-            trigger_score(0)
-
-        game_time -= dt
-        update_timer(game_time)
-
-        if game_time <= 0:
-            game_state.end_game()
-    elif game_state.game_frozen.is_active:
-        pygame.mouse.set_pos(player.rect.center)
-
-    # rendering and updates
-    screen.fill(ice_color)
-
-    rink_objects.draw(screen)
-
-    if game_state.game_active.is_active:
-        rink_objects.update(dt)
-        game_objects.update(dt)
-
-    particle_manager.update(dt)
-
-    particle_manager.draw(screen)
-    game_objects.draw(screen)
-    gui_objects.draw(screen)
-    gui_objects.update(dt)
-
+    current_screen.draw()
     pygame.display.update()
     dt = min(clock.tick(60) / 1500, 0.02)
