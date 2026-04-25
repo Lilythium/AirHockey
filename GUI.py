@@ -1,5 +1,6 @@
-import pygame
 import math
+
+import pygame
 
 fonts = [
     'fonts/CursedTimerUlil-Aznm.ttf',
@@ -115,3 +116,20 @@ class NotificationText(Text):
         self.image.set_alpha(self.alpha)
         self.rect = self.image.get_rect(center=self.pos)
 
+
+class FlashingText(Text):
+    def __init__(self, pos, text, fontOption=0, width=None, height=None,
+                 color='Black', flash_speed=2.0, min_alpha=40, max_alpha=255):
+        super().__init__(pos, text, fontOption, width, height, color)
+        self.flash_speed = flash_speed
+        self.min_alpha = min_alpha
+        self.max_alpha = max_alpha
+        self.elapsed = 0.0
+        self.base_image = self.image.copy()
+
+    def update(self, dt):
+        self.elapsed += dt
+        t = 0.5 + 0.5 * math.sin(self.elapsed * self.flash_speed * 2 * math.pi)
+        alpha = int(self.min_alpha + (self.max_alpha - self.min_alpha) * t)
+        self.image = self.base_image.copy()
+        self.image.set_alpha(alpha)
