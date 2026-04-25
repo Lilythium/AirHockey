@@ -7,7 +7,7 @@ import pygame
 import GameObjects
 import RinkObjects
 import particles
-from GUI import TextBox, Text
+from GUI import TextBox, Text, NotificationText
 from StateMachines import GameStateMachine
 
 pygame.init()
@@ -94,6 +94,9 @@ def trigger_score(player_num):
     )
     update_score_display()
     game_state.freeze(duration=1.5)
+
+    spawn_notif_text(f"Player {player_num + 1} Scored!")
+
     puck.reset()
     player.reset()
     compPlayer.reset()
@@ -110,9 +113,21 @@ def update_timer(time_remaining):
     minutes = min(time // 60, 99)
     seconds = time % 60
 
-    minStr = str(minutes) if minutes > 10 else f"0{minutes}"
-    secStr = str(seconds) if seconds > 10 else f"0{seconds}"
+    minStr = str(minutes) if minutes >= 10 else f"0{minutes}"
+    secStr = str(seconds) if seconds >= 10 else f"0{seconds}"
     timeDisplay.update_text(f"{minStr}:{secStr}")
+
+
+def spawn_notif_text(text, duration=1.75):
+    scoreText = NotificationText(
+        pos=screen_center,
+        text=text,
+        fontOption=1,
+        width=screen.get_width() // 2,
+        height=80,
+        duration=duration
+    )
+    gui_objects.add(scoreText)
 
 
 def spawn_goal_burst(pos, puck_vel, count=50):
@@ -184,6 +199,7 @@ while True:
     particle_manager.draw(screen)
     game_objects.draw(screen)
     gui_objects.draw(screen)
+    gui_objects.update(dt)
 
     pygame.display.update()
-    dt = min(clock.tick(60) / 1000, 0.02)
+    dt = min(clock.tick(60) / 1500, 0.02)

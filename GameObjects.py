@@ -31,7 +31,7 @@ class Puck(pygame.sprite.Sprite):
 
 
 class GamePuck(Puck):
-    def __init__(self, color, particle_manager, edge_group, screen, screen_center, friction=0.74,
+    def __init__(self, color, particle_manager, edge_group, screen, screen_center, friction=0.6,
                  wall_elasticity=0.9,
                  player_elasticity=0.8):
         super().__init__(color, screen_center, 20)
