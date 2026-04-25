@@ -286,9 +286,25 @@ class ComputerPaddle(Paddle):
         self.goal = goal
         self.puck = puck
 
+        self.reaction_time = 0.15
+        self.reaction_timer = 0
+        self.cached_target = pygame.Vector2(self.rect.center)
+        self.move_vel = pygame.Vector2(0, 0)
+
     def get_direction(self) -> pygame.Vector2:
-        puck_pos = self.puck.pos
-        target = pygame.Vector2(puck_pos[0], puck_pos[1])
+        if self.puck.pos.x < self.screen_center[0]:
+            target = pygame.Vector2(self.starting_pos)
+        else:
+            target = self.cached_target
+
+            # --- Overshoot logic ---
+            to_target = target - pygame.Vector2(self.rect.center)
+            if to_target.length_squared() > 0 and to_target.length() < 150:
+                speed_factor = min(self.move_vel.length() / self.speed, 1)
+                overshoot_amount = 15 + 25 * speed_factor
+                overshoot_dir = to_target.normalize()
+                target += overshoot_dir * overshoot_amount
+            # -----------------------
 
         if self.divider:
             min_x = self.divider.rect.right + self.radius
@@ -296,8 +312,8 @@ class ComputerPaddle(Paddle):
 
         direction = target - pygame.Vector2(self.rect.center)
 
-        if direction.length_squared() < 4:
-            return pygame.math.Vector2(0, 0)
+        if direction.length_squared() < 250:
+            return pygame.Vector2(0, 0)
 
         return direction
 
@@ -307,3 +323,40 @@ class ComputerPaddle(Paddle):
         if self.divider:
             if self.rect.left < self.divider.rect.right:
                 self.rect.left = self.divider.rect.right
+
+    def update(self, dt):
+        if random.random() < dt * 2:
+            self.reaction_time = random.uniform(0.1, 0.25)
+
+        self.reaction_timer -= dt
+
+        if self.reaction_timer <= 0:
+            self.reaction_timer = self.reaction_time
+
+            prediction_time = 0.2
+            puck_pos = self.puck.pos + self.puck.vel * prediction_time
+            self.cached_target = pygame.Vector2(puck_pos.x, puck_pos.y)
+
+            error = pygame.Vector2(
+                random.uniform(-25, 25),
+                random.uniform(-25, 25)
+            )
+            self.cached_target += error
+
+        old_pos = pygame.math.Vector2(self.rect.center)
+        direction = self.get_direction()
+
+        if direction is None or direction.length_squared() == 0:
+            self.vel = pygame.math.Vector2(0, 0)
+            return
+
+        desired_vel = direction.normalize() * self.speed
+        self.move_vel = self.move_vel.lerp(desired_vel, 0.15)
+        movement = self.move_vel * dt
+
+        self.rect.centerx += movement.x
+        self.rect.centery += movement.y
+
+        self.handle_collision()
+
+        self.vel = (pygame.math.Vector2(self.rect.center) - old_pos) / dt
