@@ -123,13 +123,11 @@ class GamePuck(Puck):
                 edgeRect = edge.topRect
             else:
                 edgeRect = edge.bottomRect
-
             # Determine which vertical boundary we care about
             if self.vel.x > 0:
                 boundary_x = edgeRect.left
             else:
                 boundary_x = edgeRect.right
-
             # Check if we crossed the boundary this frame
             crossed = (
                     (self.prev_pos.x - boundary_x) * (self.pos.x - boundary_x) <= 0
@@ -139,7 +137,8 @@ class GamePuck(Puck):
                 continue
 
             # Check if y is within the vertical span of the edge
-            if not (edgeRect.top <= self.pos.y <= edgeRect.bottom):
+            if (not (edgeRect.top <= self.pos.y + self.radius <= edgeRect.bottom) and
+                    not (edgeRect.top <= self.pos.y - self.radius <= edgeRect.bottom)):
                 continue
 
             # Collision normal (pure horizontal wall)
@@ -158,6 +157,7 @@ class GamePuck(Puck):
                 normal=normal,
                 elasticity=self.wall_elasticity
             )
+            self.rect.center = (round(self.pos.x), round(self.pos.y))
 
         # Vertical
         if self.pos.y - self.radius < 0:  # Hit Top
@@ -195,6 +195,7 @@ class GamePuck(Puck):
                 other_vel=paddle.vel,
                 elasticity=self.player_elasticity
             )
+            self.rect.center = (round(self.pos.x), round(self.pos.y))
 
 
 class Paddle(Puck):
@@ -247,6 +248,7 @@ class Paddle(Puck):
             self.rect.top = 0
         if self.rect.bottom > self.screen.get_height():
             self.rect.bottom = self.screen.get_height()
+        self.pos = self.rect.center
 
 
 class PlayerPaddle(Paddle):
