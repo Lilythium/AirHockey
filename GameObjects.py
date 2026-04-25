@@ -155,7 +155,6 @@ class GamePuck(Puck):
             self.pos.y = self.screen.get_height() - self.radius
             self.vel.y *= -self.wall_elasticity
 
-        # Sync the rect
         self.rect.center = self.pos
 
     def handle_player_collision(self):

@@ -79,6 +79,9 @@ scores = [0, 0]
 game_time = 180
 dt = 0.01
 
+window_focused = True
+focus_resume_timer = 0.0
+
 game_state = GameStateMachine()
 game_state.freeze(duration=1)
 
@@ -160,7 +163,6 @@ def spawn_goal_burst(pos, puck_vel, count=50):
 
 
 while True:
-    # inputs
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -170,7 +172,31 @@ while True:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 exit()
-    game_state.update(dt)
+        if event.type == pygame.WINDOWFOCUSLOST:
+            window_focused = False
+        elif event.type == pygame.WINDOWFOCUSGAINED:
+            window_focused = True
+            focus_resume_timer = 1.0
+
+    if not window_focused or focus_resume_timer > 0:
+        if window_focused and focus_resume_timer > 0:
+            focus_resume_timer -= dt
+    else:
+        game_state.update(dt)
+
+        if game_state.game_active.is_active:
+            if puck.pos[0] < 0 - puck.radius:
+                trigger_score(1)
+            elif puck.pos[0] > screen.get_width() + puck.radius:
+                trigger_score(0)
+
+            game_time -= dt
+            update_timer(game_time)
+
+            if game_time <= 0:
+                game_state.end_game()
+        elif game_state.game_frozen.is_active:
+            pygame.mouse.set_pos(player.rect.center)
 
     # Game Logic
     if game_state.game_active.is_active:
@@ -186,6 +212,7 @@ while True:
             game_state.end_game()
     elif game_state.game_frozen.is_active:
         pygame.mouse.set_pos(player.rect.center)
+
     # rendering and updates
     screen.fill(ice_color)
 
