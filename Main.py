@@ -136,7 +136,8 @@ def spawn_goal_burst(pos, puck_vel, count=50):
             random.uniform(-10, 10),
             random.uniform(-6, 6)
         )
-        spawn_pos += puck_vel.normalize() * 5
+        if puck_vel.length_squared() > 0:
+            spawn_pos += puck_vel.normalize() * 5
         # particle_manager.add(
         #     particles.GoalBurst(
         #         spawn_pos,
