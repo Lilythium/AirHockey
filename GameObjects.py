@@ -117,47 +117,35 @@ class GamePuck(Puck):
             self.vel -= (1 + elasticity) * rel_vel_dot_normal * normal
 
     def handle_wall_collision(self):
-        """Bounce off-screen edges using center position and radius."""
         for edge in self.edges:
-            if self.rect.centery < self.screen_center[1]:
-                edgeRect = edge.topRect
-            else:
-                edgeRect = edge.bottomRect
-            # Determine which vertical boundary we care about
-            if self.vel.x > 0:
-                boundary_x = edgeRect.left
-            else:
-                boundary_x = edgeRect.right
-            # Check if we crossed the boundary this frame
-            crossed = (
-                    (self.prev_pos.x - boundary_x) * (self.pos.x - boundary_x) <= 0
-            )
+            for edgeRect in [edge.topRect, edge.bottomRect]:
+                if self.vel.x > 0:
+                    boundary_x = edgeRect.left
+                else:
+                    boundary_x = edgeRect.right
 
-            if not crossed:
-                continue
+                crossed = (
+                        (self.prev_pos.x - boundary_x) * (self.pos.x - boundary_x) <= 0
+                )
 
-            # Check if y is within the vertical span of the edge
-            if (not (edgeRect.top <= self.pos.y + self.radius <= edgeRect.bottom) and
-                    not (edgeRect.top <= self.pos.y - self.radius <= edgeRect.bottom)):
-                continue
+                if not crossed:
+                    continue
 
-            # Collision normal (pure horizontal wall)
-            if self.vel.x > 0:
-                normal = pygame.math.Vector2(-1, 0)
-            else:
-                normal = pygame.math.Vector2(1, 0)
+                if (not (edgeRect.top <= self.pos.y + self.radius <= edgeRect.bottom) and
+                        not (edgeRect.top <= self.pos.y - self.radius <= edgeRect.bottom)):
+                    continue
 
-            # Snap puck to boundary (prevents sinking)
-            if self.vel.x > 0:
-                self.pos.x = boundary_x - self.radius
-            else:
-                self.pos.x = boundary_x + self.radius
+                if self.vel.x > 0:
+                    normal = pygame.math.Vector2(-1, 0)
+                    self.pos.x = boundary_x - self.radius
+                else:
+                    normal = pygame.math.Vector2(1, 0)
+                    self.pos.x = boundary_x + self.radius
 
-            self.resolve_collision(
-                normal=normal,
-                elasticity=self.wall_elasticity
-            )
-            self.rect.center = (round(self.pos.x), round(self.pos.y))
+                self.resolve_collision(normal=normal, elasticity=self.wall_elasticity)
+                self.rect.center = (round(self.pos.x), round(self.pos.y))
+
+        # Vertical walls unchanged...
 
         # Vertical
         if self.pos.y - self.radius < 0:  # Hit Top
