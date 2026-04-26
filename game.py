@@ -12,6 +12,13 @@ from StateMachines import GameStateMachine
 ice_color = (200, 230, 255)
 fonts = ['fonts/CursedTimerUlil-Aznm.ttf', 'fonts/Chewy-Regular.ttf']
 
+game_sounds = {
+    "complete": 'audio/gameSounds/game-complete.mp3',
+    "start": 'audio/gameSounds/game-start.mp3',
+    "unfreeze": 'audio/gameSounds/game-unfreeze.mp3',
+    "gaol": 'audio/gameSounds/game-goal.mp3'
+}
+
 
 class GameScreen:
     def __init__(self, screen):
@@ -173,6 +180,24 @@ class GameScreen:
         self.game_objects.remove(self.player)
         self.game_objects.add(self.attract_left)
         self.puck.paddles = [self.attract_left, self.comp]
+
+        if self.scores[0] > self.scores[1]:
+            winner_text = "Player 1 Wins!"
+            winner_color = (180, 40, 40)
+        elif self.scores[1] > self.scores[0]:
+            winner_text = "Player 2 Wins!"
+            winner_color = (40, 40, 180)
+        else:
+            winner_text = "It's a Tie!"
+            winner_color = (60, 60, 60)
+
+        self.overlay_objects.add(Text(
+            pos=(self.screen_center[0], self.screen_center[1] - 65),
+            text=winner_text,
+            fontOption=1,
+            height=80,
+            color=winner_color,
+        ))
 
         self.overlay_objects.add(FlashingText(
             pos=self.screen_center,
