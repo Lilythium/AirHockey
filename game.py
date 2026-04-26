@@ -1,7 +1,6 @@
-import math
 import random
 from math import ceil
-
+from GameObjects import hit_sounds
 import pygame
 
 import GameObjects
@@ -91,6 +90,8 @@ class GameScreen:
                 self.focus_resume_timer = 1.0
 
             if self.game_over and event.type == pygame.KEYDOWN:
+                for sound in hit_sounds:
+                    sound.set_volume(1.0)
                 return "start"
 
         # game over runs regardless of focus — attract mode should keep going
@@ -189,6 +190,8 @@ class GameScreen:
         self.puck.vel = pygame.math.Vector2(
             random.choice([-450, 450]), random.uniform(-200, 200)
         )
+        for sound in hit_sounds:
+            sound.set_volume(0.2)
         self.game_objects.update(dt)
 
     def _reset_attract(self):
