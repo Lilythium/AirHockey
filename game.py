@@ -67,7 +67,7 @@ class GameScreen:
 
         # --- State ---
         self.scores = [0, 0]
-        self.game_time = 10.0
+        self.game_time = 180
 
         self.game_state = GameStateMachine()
         self.game_state.freeze(duration=1)
