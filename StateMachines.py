@@ -10,6 +10,7 @@ class GameStateMachine(StateMachine):
     unfreeze = game_frozen.to(game_active)
 
     end_game = game_active.to(game_over) | game_frozen.to(game_over)
+    restart = game_over.to(game_active)
 
     def __init__(self):
         super().__init__()

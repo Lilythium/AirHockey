@@ -67,7 +67,7 @@ class GameScreen:
 
         # --- State ---
         self.scores = [0, 0]
-        self.game_time = 180
+        self.game_time = 180.0
 
         self.game_state = GameStateMachine()
         self.game_state.freeze(duration=1)
@@ -75,8 +75,6 @@ class GameScreen:
         self.window_focused = True
         self.focus_resume_timer = 0.0
 
-        self.game_over = False
-        self.game_over_elapsed = 0.0
         self.attract_left = None
 
         self._game_over_font = pygame.font.Font(fonts[1], 42)
@@ -89,13 +87,13 @@ class GameScreen:
                 self.window_focused = True
                 self.focus_resume_timer = 1.0
 
-            if self.game_over and event.type == pygame.KEYDOWN:
+            if self.game_state.game_over.is_active and event.type == pygame.KEYDOWN:
                 for sound in hit_sounds:
                     sound.set_volume(1.0)
                 return "start"
 
         # game over runs regardless of focus — attract mode should keep going
-        if self.game_over:
+        if self.game_state.game_over.is_active:
             self._update_attract(dt)
         else:
             frozen_by_focus = not self.window_focused or self.focus_resume_timer > 0
@@ -117,7 +115,7 @@ class GameScreen:
         self.particle_manager.draw(self.screen)
         self.game_objects.draw(self.screen)
 
-        if self.game_over:
+        if self.game_state.game_over.is_active:
             self.overlay_objects.draw(self.screen)
         else:
             self.hud_objects.draw(self.screen)
@@ -162,7 +160,6 @@ class GameScreen:
         self.game_objects.update(dt)
 
     def _enter_game_over(self, dt):
-        self.game_over = True
         pygame.event.set_grab(False)
         pygame.mouse.set_visible(True)
 
