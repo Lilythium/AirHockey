@@ -1,5 +1,7 @@
 from statemachine import StateMachine, State
 
+import SoundManager
+
 
 class GameStateMachine(StateMachine):
     game_active = State("Active", initial=True)
@@ -19,6 +21,9 @@ class GameStateMachine(StateMachine):
     def on_enter_game_frozen(self, duration=1.5):
         # duration in seconds
         self.freeze_timer = duration
+
+    def on_exit_game_frozen(self):
+        SoundManager.sound_manager.play("unfreeze")
 
     def update(self, dt):
         if self.game_frozen.is_active:

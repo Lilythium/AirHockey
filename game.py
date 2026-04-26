@@ -1,6 +1,6 @@
 import random
 from math import ceil
-from GameObjects import hit_sounds
+
 import pygame
 
 import GameObjects
@@ -8,16 +8,10 @@ import RinkObjects
 import particles
 from GUI import TextBox, Text, NotificationText, FlashingText
 from StateMachines import GameStateMachine
+from SoundManager import sound_manager
 
 ice_color = (200, 230, 255)
 fonts = ['fonts/CursedTimerUlil-Aznm.ttf', 'fonts/Chewy-Regular.ttf']
-
-game_sounds = {
-    "complete": 'audio/gameSounds/game-complete.mp3',
-    "start": 'audio/gameSounds/game-start.mp3',
-    "unfreeze": 'audio/gameSounds/game-unfreeze.mp3',
-    "gaol": 'audio/gameSounds/game-goal.mp3'
-}
 
 
 class GameScreen:
@@ -68,7 +62,6 @@ class GameScreen:
         self.leftScore = Text(pos=(30, 40), width=60, height=80, text="0", fontOption=1)
         self.rightScore = Text(pos=(screen.get_width() - 30, 40), width=60, height=80, text="0", fontOption=1)
 
-        # hud_objects drawn during active play; overlay_objects drawn on game over
         self.hud_objects = pygame.sprite.Group(self.timeDisplay, self.leftScore, self.rightScore)
         self.overlay_objects = pygame.sprite.Group()
 
@@ -86,6 +79,8 @@ class GameScreen:
 
         self._game_over_font = pygame.font.Font(fonts[1], 42)
 
+        sound_manager.play("start")
+
     def update(self, dt, events):
         for event in events:
             if event.type == pygame.WINDOWFOCUSLOST:
@@ -95,11 +90,9 @@ class GameScreen:
                 self.focus_resume_timer = 1.0
 
             if self.game_state.game_over.is_active and event.type == pygame.KEYDOWN:
-                for sound in hit_sounds:
-                    sound.set_volume(1.0)
+                sound_manager.sfx_volume = 1.0
                 return "start"
 
-        # game over runs regardless of focus — attract mode should keep going
         if self.game_state.game_over.is_active:
             self._update_attract(dt)
         else:
@@ -128,12 +121,10 @@ class GameScreen:
             self.hud_objects.draw(self.screen)
 
     # Internal helpers
-
     def _update_game(self, dt):
         self.game_state.update(dt)
 
         if self.game_state.game_active.is_active:
-            # Goal check
             if self.puck.pos.x < -self.puck.radius:
                 self._trigger_score(1, dt)
             elif self.puck.pos.x > self.screen.get_width() + self.puck.radius:
@@ -209,11 +200,13 @@ class GameScreen:
             min_alpha=40,
         ))
 
+        sound_manager.play("complete")
+
+        sound_manager.sfx_volume = 0.2
+
         self.puck.vel = pygame.math.Vector2(
             random.choice([-450, 450]), random.uniform(-200, 200)
         )
-        for sound in hit_sounds:
-            sound.set_volume(0.2)
         self.game_objects.update(dt)
 
     def _reset_attract(self):
@@ -230,6 +223,7 @@ class GameScreen:
         self._update_score_display()
         self.game_state.freeze(duration=1.5)
         self._spawn_notif(f"Player {player_num + 1} Scored!")
+        sound_manager.play("goal")
         self.puck.reset()
         self.player.reset()
         self.comp.reset()

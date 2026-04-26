@@ -4,13 +4,7 @@ import pygame
 
 import particles
 from RinkObjects import Goal
-
-pygame.mixer.init()
-hit_sounds = [
-    pygame.mixer.Sound('audio/hitSounds/puckHit_1.wav'),
-    pygame.mixer.Sound('audio/hitSounds/puckHit_2.wav'),
-    pygame.mixer.Sound('audio/hitSounds/puckHit_3.wav')
-]
+from SoundManager import sound_manager
 
 
 class Puck(pygame.sprite.Sprite):
@@ -94,24 +88,20 @@ class GamePuck(Puck):
     def produce_collision_sound(self):
         if self.last_sound_effect_trigger <= 0:
             self.last_sound_effect_trigger = 0.1
-            random.choice(hit_sounds).play()
+            sound_manager.play_hit()
 
     def resolve_collision(self, normal, overlap=0, other_vel=pygame.math.Vector2(0, 0), elasticity=1.0):
-        # Ensure normal is normalized
         if normal.length() == 0:
             return
         normal = normal.normalize()
 
-        # Separate objects
         if overlap > 0:
             self.pos += normal * overlap
             self.rect.center = self.pos
 
-        # Relative velocity
         rel_vel = self.vel - other_vel
         rel_vel_dot_normal = rel_vel.dot(normal)
 
-        # Only bounce if moving into the surface
         if rel_vel_dot_normal < 0:
             self.produce_collision_sound()
             self.vel -= (1 + elasticity) * rel_vel_dot_normal * normal
@@ -145,12 +135,11 @@ class GamePuck(Puck):
                 self.resolve_collision(normal=normal, elasticity=self.wall_elasticity)
                 self.rect.center = (round(self.pos.x), round(self.pos.y))
 
-        # Vertical
-        if self.pos.y - self.radius < 0:  # Hit Top
+        if self.pos.y - self.radius < 0:
             self.produce_collision_sound()
             self.pos.y = self.radius
             self.vel.y *= -self.wall_elasticity
-        elif self.pos.y + self.radius > self.screen.get_height():  # Hit Bottom
+        elif self.pos.y + self.radius > self.screen.get_height():
             self.produce_collision_sound()
             self.pos.y = self.screen.get_height() - self.radius
             self.vel.y *= -self.wall_elasticity
@@ -273,7 +262,7 @@ class ComputerPaddle(Paddle):
         super().__init__(color, starting_pos, screen, screen_center, speed)
         self.goal = goal
         self.puck = puck
-        self.side = side  # 'right' or 'left'
+        self.side = side
 
         self.reaction_time = 0.15
         self.reaction_timer = 0
