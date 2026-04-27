@@ -1,4 +1,6 @@
+import os
 import random
+import sys
 from math import ceil
 
 import pygame
@@ -7,11 +9,18 @@ import GameObjects
 import RinkObjects
 import particles
 from GUI import TextBox, Text, NotificationText, FlashingText
-from StateMachines import GameStateMachine
 from SoundManager import sound_manager
+from StateMachines import GameStateMachine
+
+
+def resource_path(rel):
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
 
 ice_color = (200, 230, 255)
-fonts = ['fonts/CursedTimerUlil-Aznm.ttf', 'fonts/Chewy-Regular.ttf']
+fonts = [resource_path('fonts/CursedTimerUlil-Aznm.ttf'),
+         resource_path('fonts/Chewy-Regular.ttf')]
 
 
 class GameScreen:

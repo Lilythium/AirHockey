@@ -1,5 +1,14 @@
+import os
 import random
+import sys
+
 import pygame
+
+
+def resource_path(rel):
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
 
 pygame.mixer.init()
 
@@ -9,16 +18,16 @@ class SoundManager:
         self._sfx_volume = 1.0
 
         self._hit_sounds = [
-            pygame.mixer.Sound('audio/hitSounds/puckHit_1.wav'),
-            pygame.mixer.Sound('audio/hitSounds/puckHit_2.wav'),
-            pygame.mixer.Sound('audio/hitSounds/puckHit_3.wav'),
+            pygame.mixer.Sound(resource_path('audio/hitSounds/puckHit_1.wav')),
+            pygame.mixer.Sound(resource_path('audio/hitSounds/puckHit_2.wav')),
+            pygame.mixer.Sound(resource_path('audio/hitSounds/puckHit_3.wav')),
         ]
 
         self._game_sounds = {
-            "complete": pygame.mixer.Sound('audio/gameSounds/game-complete.mp3'),
-            "start":    pygame.mixer.Sound('audio/gameSounds/game-start.mp3'),
-            "unfreeze": pygame.mixer.Sound('audio/gameSounds/game-unfreeze.mp3'),
-            "goal":     pygame.mixer.Sound('audio/gameSounds/game-goal.mp3'),
+            "complete": pygame.mixer.Sound(resource_path('audio/gameSounds/game-complete.mp3')),
+            "start": pygame.mixer.Sound(resource_path('audio/gameSounds/game-start.mp3')),
+            "unfreeze": pygame.mixer.Sound(resource_path('audio/gameSounds/game-unfreeze.mp3')),
+            "goal": pygame.mixer.Sound(resource_path('audio/gameSounds/game-goal.mp3')),
         }
 
         self._apply_volume()
@@ -51,7 +60,6 @@ class SoundManager:
             sound.play()
         else:
             print(f"[SoundManager] Unknown sound: '{name}'")
-
 
 
 sound_manager = SoundManager()

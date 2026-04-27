@@ -1,9 +1,18 @@
 import math
+import os
+import sys
+
 import pygame
 
+
+def resource_path(rel):
+    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
+
 fonts = [
-    'fonts/CursedTimerUlil-Aznm.ttf',
-    'fonts/Chewy-Regular.ttf',
+    resource_path('fonts/CursedTimerUlil-Aznm.ttf'),
+    resource_path('fonts/Chewy-Regular.ttf'),
 ]
 
 ice_color = (200, 230, 255)
