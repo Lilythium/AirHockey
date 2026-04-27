@@ -31,6 +31,9 @@ class GameScreen:
         pygame.mouse.set_visible(False)
         pygame.event.set_grab(True)
 
+        sound_manager.set_music_volume(0.7)
+        sound_manager.play_music()
+
         # --- Rink ---
         self.divider = RinkObjects.Divider(screen, self.screen_center)
         self.leftGoal = RinkObjects.Goal(screen)
